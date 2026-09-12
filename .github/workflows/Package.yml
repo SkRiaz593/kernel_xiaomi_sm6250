@@ -1,0 +1,108 @@
+name: Package RedCherry Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Find Latest Successful Kernel Build
+        id: find_run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "Build.yml",
+                status: "success",
+                per_page: 20
+              }
+            );
+
+            if (!runs.length) {
+              core.setFailed("No successful Build.yml workflow run found.");
+              return;
+            }
+
+            const run = runs[0];
+
+            core.info(`Using Build.yml run: ${run.id}`);
+            core.info(`Created: ${run.created_at}`);
+
+            core.setOutput("run_id", run.id.toString());
+
+      - name: Download Kernel Artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.find_run.outputs.run_id }}
+        run: |
+          mkdir -p kernel-artifact
+
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name RedCherry-Kernel \
+            --dir kernel-artifact
+
+          echo "=== DOWNLOADED FILES ==="
+          find kernel-artifact -type f -print | sort
+
+      - name: Verify Kernel Files
+        run: |
+          set -e
+
+          test -f kernel-artifact/Image.gz
+          test -f kernel-artifact/ath.ko
+          test -f kernel-artifact/ath9k/ath9k_common.ko
+          test -f kernel-artifact/ath9k/ath9k_hw.ko
+          test -f kernel-artifact/ath9k/ath9k_htc.ko
+
+          echo "All required kernel files found."
+
+      - name: Prepare Package
+        run: |
+          set -e
+
+          rm -rf RedCherry-ZIP
+          mkdir -p RedCherry-ZIP/modules/system/lib/modules
+          mkdir -p RedCherry-ZIP/modules/system/lib/modules/ath9k
+
+          cp kernel-artifact/Image.gz \
+            RedCherry-ZIP/Image.gz
+
+          cp kernel-artifact/ath.ko \
+            RedCherry-ZIP/modules/system/lib/modules/ath.ko
+
+          cp kernel-artifact/ath9k/ath9k_common.ko \
+            RedCherry-ZIP/modules/system/lib/modules/ath9k_common.ko
+
+          cp kernel-artifact/ath9k/ath9k_hw.ko \
+            RedCherry-ZIP/modules/system/lib/modules/ath9k_hw.ko
+
+          cp kernel-artifact/ath9k/ath9k_htc.ko \
+            RedCherry-ZIP/modules/system/lib/modules/ath9k_htc.ko
+
+          echo "=== PACKAGE CONTENT ==="
+          find RedCherry-ZIP -type f -print | sort
+
+      - name: Create Package Preview ZIP
+        run: |
+          cd RedCherry-ZIP
+          zip -r9 ../RedCherry-miatoll-package-preview.zip .
+          cd ..
+
+          echo "=== ZIP CONTENT ==="
+          unzip -l RedCherry-miatoll-package-preview.zip
+
+      - name: Upload Package Preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: RedCherry-miatoll-package-preview
+          path: RedCherry-miatoll-package-preview.zip
