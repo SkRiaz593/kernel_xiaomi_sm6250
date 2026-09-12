@@ -20,6 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
+
           mkdir -p kernel-artifact
 
           gh run download 34679231301 \
@@ -44,6 +45,8 @@ jobs:
 
       - name: Clone AnyKernel3
         run: |
+          set -e
+
           git clone --depth=1 \
             https://github.com/osm0sis/AnyKernel3.git \
             AnyKernel3
@@ -51,6 +54,7 @@ jobs:
       - name: Configure RedCherry AnyKernel
         run: |
           set -e
+
           cd AnyKernel3
 
           rm -rf ramdisk patch
@@ -58,7 +62,8 @@ jobs:
 
           mkdir -p modules/system/lib/modules
 
-          cp ../kernel-artifact/arch/arm64/boot/Image.gz .
+          cp ../kernel-artifact/arch/arm64/boot/Image.gz \
+            Image.gz
 
           cp ../kernel-artifact/drivers/net/wireless/ath/ath.ko \
             modules/system/lib/modules/
@@ -74,7 +79,7 @@ jobs:
 
           cat > anykernel.sh <<'EOF'
           ### AnyKernel3 Ramdisk Mod Script
-          ## RedCherry Kernel for Xiaomi curtana / miatoll
+          ## RedCherry Kernel for Xiaomi curtana
 
           properties() { '
           kernel.string=RedCherry Kernel by Riaz
@@ -84,7 +89,6 @@ jobs:
           do.cleanup=1
           do.cleanuponabort=0
           device.name1=curtana
-          device.name2=miatoll
           supported.versions=
           supported.patchlevels=
           supported.vendorpatchlevels=
@@ -104,12 +108,12 @@ jobs:
           ## end install
           EOF
 
-          echo "=== FINAL ANYKERNEL FILES ==="
-          find . -type f | sort
-
-          echo ""
           echo "=== ANYKERNEL CONFIG ==="
           cat anykernel.sh
+
+          echo ""
+          echo "=== ATH9K MODULES ==="
+          find modules -type f | sort
 
       - name: Create Flashable RedCherry ZIP
         run: |
@@ -118,24 +122,27 @@ jobs:
           cd AnyKernel3
 
           rm -rf .git .github
+          rm -f *placeholder
 
           zip -r9 \
-            ../RedCherry-miatoll-Flashable.zip \
-            .
+            ../RedCherry-curtana-Flashable.zip \
+            . \
+            -x "*.git*" \
+            "README.md"
 
           cd ..
 
           echo "=== FINAL ZIP ==="
-          ls -lh RedCherry-miatoll-Flashable.zip
+          ls -lh RedCherry-curtana-Flashable.zip
 
           echo ""
           echo "=== IMPORTANT ZIP CONTENT ==="
-          unzip -l RedCherry-miatoll-Flashable.zip | grep -E \
+          unzip -l RedCherry-curtana-Flashable.zip | grep -E \
             "Image.gz|anykernel.sh|META-INF|tools/ak3-core.sh|ath.*\.ko"
 
       - name: Upload Flashable RedCherry Kernel
         uses: actions/upload-artifact@v4
         with:
-          name: RedCherry-miatoll-Flashable
-          path: RedCherry-miatoll-Flashable.zip
+          name: RedCherry-curtana-Flashable
+          path: RedCherry-curtana-Flashable.zip
           if-no-files-found: error
