@@ -3,10 +3,6 @@ name: Package RedCherry Kernel
 on:
   workflow_dispatch:
 
-permissions:
-  actions: read
-  contents: read
-
 jobs:
   package:
     runs-on: ubuntu-22.04
@@ -14,73 +10,55 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
+        with:
+          ref: 16.0
 
-      - name: Download Build #10 Artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Install Dependencies
         run: |
-          set -e
+          sudo apt update
+          sudo apt install -y unzip zip
 
-          mkdir -p kernel-artifact
+      - name: Download Build #11 Artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 34691032227
+          name: RedCherry-Kernel
+          path: kernel-artifact
 
-          gh run download 34679231301 \
-            --repo "$GITHUB_REPOSITORY" \
-            --name RedCherry-Kernel \
-            --dir kernel-artifact
-
-          echo "=== DOWNLOADED FILES ==="
-          find kernel-artifact -type f | sort
-
-      - name: Verify Kernel Files
+      - name: Prepare AnyKernel3
         run: |
-          set -e
-
-          test -f kernel-artifact/arch/arm64/boot/Image.gz
-          test -f kernel-artifact/drivers/net/wireless/ath/ath.ko
-          test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_common.ko
-          test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_hw.ko
-          test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_htc.ko
-
-          echo "=== ALL REDCHERRY FILES VERIFIED ==="
-
-      - name: Clone AnyKernel3
-        run: |
-          set -e
-
           git clone --depth=1 \
             https://github.com/osm0sis/AnyKernel3.git \
-            AnyKernel3
+            anykernel
 
-      - name: Configure RedCherry AnyKernel
+          rm -rf anykernel/.git
+          rm -rf anykernel/.github
+
+      - name: Copy Kernel Image
         run: |
-          set -e
+          cp kernel-artifact/arch/arm64/boot/Image.gz \
+            anykernel/Image.gz
 
-          cd AnyKernel3
+      - name: Copy Kernel Modules
+        run: |
+          mkdir -p anykernel/modules/system/lib/modules
 
-          rm -rf ramdisk patch
-          rm -f Image Image.gz Image.gz-dtb README.md
+          cp kernel-artifact/drivers/net/wireless/ath/ath.ko \
+            anykernel/modules/system/lib/modules/
 
-          mkdir -p modules/system/lib/modules
+          cp kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_common.ko \
+            anykernel/modules/system/lib/modules/
 
-          cp ../kernel-artifact/arch/arm64/boot/Image.gz \
-            Image.gz
+          cp kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_hw.ko \
+            anykernel/modules/system/lib/modules/
 
-          cp ../kernel-artifact/drivers/net/wireless/ath/ath.ko \
-            modules/system/lib/modules/
+          cp kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_htc.ko \
+            anykernel/modules/system/lib/modules/
 
-          cp ../kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_common.ko \
-            modules/system/lib/modules/
-
-          cp ../kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_hw.ko \
-            modules/system/lib/modules/
-
-          cp ../kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_htc.ko \
-            modules/system/lib/modules/
-
-          cat > anykernel.sh <<'EOF'
-          ### AnyKernel3 Ramdisk Mod Script
-          ## RedCherry Kernel for Xiaomi curtana
-
+      - name: Configure AnyKernel3
+        run: |
+          cat > anykernel/anykernel.sh <<'EOF'
           properties() { '
           kernel.string=RedCherry Kernel by Riaz
           do.devicecheck=1
@@ -92,7 +70,7 @@ jobs:
           supported.versions=
           supported.patchlevels=
           supported.vendorpatchlevels=
-          '; } # end properties
+          '; }
 
           block=/dev/block/bootdevice/by-name/boot;
           is_slot_device=0;
@@ -101,48 +79,34 @@ jobs:
 
           . tools/ak3-core.sh;
 
-          ## AnyKernel install
           split_boot;
-
           flash_boot;
-          ## end install
           EOF
 
-          echo "=== ANYKERNEL CONFIG ==="
-          cat anykernel.sh
+      - name: Verify Package Contents
+        run: |
+          echo "=== KERNEL ==="
+          ls -lh anykernel/Image.gz
 
           echo ""
           echo "=== ATH9K MODULES ==="
-          find modules -type f | sort
-
-      - name: Create Flashable RedCherry ZIP
-        run: |
-          set -e
-
-          cd AnyKernel3
-
-          rm -rf .git .github
-          rm -f *placeholder
-
-          zip -r9 \
-            ../RedCherry-curtana-Flashable.zip \
-            . \
-            -x "*.git*" \
-            "README.md"
-
-          cd ..
-
-          echo "=== FINAL ZIP ==="
-          ls -lh RedCherry-curtana-Flashable.zip
+          ls -lh anykernel/modules/system/lib/modules/
 
           echo ""
-          echo "=== IMPORTANT ZIP CONTENT ==="
-          unzip -l RedCherry-curtana-Flashable.zip | grep -E \
-            "Image.gz|anykernel.sh|META-INF|tools/ak3-core.sh|ath.*\.ko"
+          echo "=== ANYKERNEL CONFIG ==="
+          cat anykernel/anykernel.sh
 
-      - name: Upload Flashable RedCherry Kernel
+      - name: Create Flashable ZIP
+        run: |
+          cd anykernel
+
+          zip -r9 ../RedCherry-miatoll-Flashable.zip . \
+            -x ".git/*" \
+            -x ".github/*"
+
+      - name: Upload Flashable ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RedCherry-curtana-Flashable
-          path: RedCherry-curtana-Flashable.zip
+          name: RedCherry-miatoll-Flashable
+          path: RedCherry-miatoll-Flashable.zip
           if-no-files-found: error
