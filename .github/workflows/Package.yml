@@ -11,7 +11,7 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
         with:
-          ref: 16.0
+          ref: '16.0'
 
       - name: Install Dependencies
         run: |
