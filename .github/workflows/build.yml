@@ -75,3 +75,7 @@ jobs:
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/Image.gz
+            out/drivers/net/wireless/ath/ath.ko
+            out/drivers/net/wireless/ath/ath9k/ath9k_common.ko
+            out/drivers/net/wireless/ath/ath9k/ath9k_hw.ko
+            out/drivers/net/wireless/ath/ath9k/ath9k_htc.ko
