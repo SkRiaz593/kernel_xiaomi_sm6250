@@ -52,7 +52,7 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             KBUILD_BUILD_USER=Riaz \
             KBUILD_BUILD_HOST=RedCherry \
-            Image
+            Image modules
 
       - name: Check Output
         run: |
