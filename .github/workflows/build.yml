@@ -56,7 +56,17 @@ jobs:
 
       - name: Check Output
         run: |
+          echo "=== KERNEL FILES ==="
           find out/arch/arm64/boot -type f
+
+          echo ""
+          echo "=== ATH9K MODULES ==="
+          find out -type f \( \
+            -name "ath.ko" -o \
+            -name "ath9k_htc.ko" -o \
+            -name "ath9k_hw.ko" -o \
+            -name "ath9k_common.ko" \
+          \) | sort
 
       - name: Upload Kernel
         uses: actions/upload-artifact@v4
