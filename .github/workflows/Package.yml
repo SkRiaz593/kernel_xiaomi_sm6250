@@ -3,6 +3,10 @@ name: Package RedCherry Kernel
 on:
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   package:
     runs-on: ubuntu-22.04
@@ -13,37 +17,34 @@ jobs:
 
       - name: Find Latest Successful Kernel Build
         id: find_run
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const runs = await github.paginate(
-              github.rest.actions.listWorkflowRuns,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: "Build.yml",
-                status: "success",
-                per_page: 20
-              }
-            );
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
 
-            if (!runs.length) {
-              core.setFailed("No successful Build.yml workflow run found.");
-              return;
-            }
+          RUN_ID=$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow "Build.yml" \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
 
-            const run = runs[0];
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful Build.yml run found."
+            exit 1
+          fi
 
-            core.info(`Using Build.yml run: ${run.id}`);
-            core.info(`Created: ${run.created_at}`);
-
-            core.setOutput("run_id", run.id.toString());
+          echo "Using Build.yml run: $RUN_ID"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Download Kernel Artifact
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.find_run.outputs.run_id }}
         run: |
+          set -e
+
           mkdir -p kernel-artifact
 
           gh run download "$RUN_ID" \
@@ -64,15 +65,15 @@ jobs:
           test -f kernel-artifact/ath9k/ath9k_hw.ko
           test -f kernel-artifact/ath9k/ath9k_htc.ko
 
-          echo "All required kernel files found."
+          echo "All required RedCherry kernel files found."
 
       - name: Prepare Package
         run: |
           set -e
 
           rm -rf RedCherry-ZIP
+
           mkdir -p RedCherry-ZIP/modules/system/lib/modules
-          mkdir -p RedCherry-ZIP/modules/system/lib/modules/ath9k
 
           cp kernel-artifact/Image.gz \
             RedCherry-ZIP/Image.gz
@@ -92,8 +93,10 @@ jobs:
           echo "=== PACKAGE CONTENT ==="
           find RedCherry-ZIP -type f -print | sort
 
-      - name: Create Package Preview ZIP
+      - name: Create Package Preview
         run: |
+          set -e
+
           cd RedCherry-ZIP
           zip -r9 ../RedCherry-miatoll-package-preview.zip .
           cd ..
