@@ -56,8 +56,23 @@ jobs:
 
       - name: Check Output
         run: |
-          echo "=== KERNEL FILES ==="
-          find out/arch/arm64/boot -type f
+          echo "=== BOOT OUTPUT ==="
+          find out/arch/arm64/boot -maxdepth 1 -type f | sort
+
+          echo ""
+          echo "=== IMAGE CHECK ==="
+
+          if [ -f out/arch/arm64/boot/Image ]; then
+            echo "Image: FOUND"
+          else
+            echo "Image: MISSING"
+          fi
+
+          if [ -f out/arch/arm64/boot/Image.gz ]; then
+            echo "Image.gz: FOUND"
+          else
+            echo "Image.gz: MISSING"
+          fi
 
           echo ""
           echo "=== ATH9K MODULES ==="
@@ -72,6 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RedCherry-Kernel
+          if-no-files-found: warn
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/Image.gz
