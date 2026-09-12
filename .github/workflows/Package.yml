@@ -15,39 +15,15 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Find Latest Successful Kernel Build
-        id: find_run
+      - name: Download Build #10 Artifact
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -e
-
-          RUN_ID=$(gh run list \
-            --repo "$GITHUB_REPOSITORY" \
-            --workflow "Build.yml" \
-            --status success \
-            --limit 1 \
-            --json databaseId \
-            --jq '.[0].databaseId')
-
-          if [ -z "$RUN_ID" ]; then
-            echo "No successful Build.yml run found."
-            exit 1
-          fi
-
-          echo "Using Build.yml run: $RUN_ID"
-          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Download Kernel Artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.find_run.outputs.run_id }}
         run: |
           set -e
 
           mkdir -p kernel-artifact
 
-          gh run download "$RUN_ID" \
+          gh run download 34679231301 \
             --repo "$GITHUB_REPOSITORY" \
             --name RedCherry-Kernel \
             --dir kernel-artifact
@@ -65,7 +41,7 @@ jobs:
           test -f kernel-artifact/ath9k/ath9k_hw.ko
           test -f kernel-artifact/ath9k/ath9k_htc.ko
 
-          echo "All required RedCherry kernel files found."
+          echo "=== ALL REQUIRED FILES FOUND ==="
 
       - name: Prepare Package
         run: |
@@ -101,7 +77,7 @@ jobs:
           zip -r9 ../RedCherry-miatoll-package-preview.zip .
           cd ..
 
-          echo "=== ZIP CONTENT ==="
+          echo "=== FINAL ZIP CONTENT ==="
           unzip -l RedCherry-miatoll-package-preview.zip
 
       - name: Upload Package Preview
