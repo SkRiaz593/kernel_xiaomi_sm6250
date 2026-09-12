@@ -35,13 +35,14 @@ jobs:
         run: |
           set -e
 
-          test -f kernel-artifact/Image.gz
-          test -f kernel-artifact/ath.ko
-          test -f kernel-artifact/ath9k/ath9k_common.ko
-          test -f kernel-artifact/ath9k/ath9k_hw.ko
-          test -f kernel-artifact/ath9k/ath9k_htc.ko
+          test -f kernel-artifact/arch/arm64/boot/Image
+          test -f kernel-artifact/arch/arm64/boot/Image.gz
+          test -f kernel-artifact/drivers/net/wireless/ath/ath.ko
+          test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_common.ko
+          test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_hw.ko
+          test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_htc.ko
 
-          echo "=== ALL REQUIRED FILES FOUND ==="
+          echo "=== ALL REQUIRED REDCHERRY FILES FOUND ==="
 
       - name: Prepare Package
         run: |
@@ -51,19 +52,19 @@ jobs:
 
           mkdir -p RedCherry-ZIP/modules/system/lib/modules
 
-          cp kernel-artifact/Image.gz \
+          cp kernel-artifact/arch/arm64/boot/Image.gz \
             RedCherry-ZIP/Image.gz
 
-          cp kernel-artifact/ath.ko \
+          cp kernel-artifact/drivers/net/wireless/ath/ath.ko \
             RedCherry-ZIP/modules/system/lib/modules/ath.ko
 
-          cp kernel-artifact/ath9k/ath9k_common.ko \
+          cp kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_common.ko \
             RedCherry-ZIP/modules/system/lib/modules/ath9k_common.ko
 
-          cp kernel-artifact/ath9k/ath9k_hw.ko \
+          cp kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_hw.ko \
             RedCherry-ZIP/modules/system/lib/modules/ath9k_hw.ko
 
-          cp kernel-artifact/ath9k/ath9k_htc.ko \
+          cp kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_htc.ko \
             RedCherry-ZIP/modules/system/lib/modules/ath9k_htc.ko
 
           echo "=== PACKAGE CONTENT ==="
@@ -77,6 +78,7 @@ jobs:
           zip -r9 ../RedCherry-miatoll-package-preview.zip .
           cd ..
 
+          echo ""
           echo "=== FINAL ZIP CONTENT ==="
           unzip -l RedCherry-miatoll-package-preview.zip
 
