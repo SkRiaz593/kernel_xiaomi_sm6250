@@ -27,18 +27,20 @@ jobs:
             --name RedCherry-Kernel \
             --dir kernel-artifact
 
+          echo "=== DOWNLOADED FILES ==="
           find kernel-artifact -type f | sort
 
       - name: Verify Kernel Files
         run: |
           set -e
+
           test -f kernel-artifact/arch/arm64/boot/Image.gz
           test -f kernel-artifact/drivers/net/wireless/ath/ath.ko
           test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_common.ko
           test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_hw.ko
           test -f kernel-artifact/drivers/net/wireless/ath/ath9k/ath9k_htc.ko
 
-          echo "All RedCherry files verified."
+          echo "=== ALL REDCHERRY FILES VERIFIED ==="
 
       - name: Clone AnyKernel3
         run: |
@@ -49,7 +51,6 @@ jobs:
       - name: Configure RedCherry AnyKernel
         run: |
           set -e
-
           cd AnyKernel3
 
           rm -rf ramdisk patch
@@ -73,7 +74,7 @@ jobs:
 
           cat > anykernel.sh <<'EOF'
           ### AnyKernel3 Ramdisk Mod Script
-          ## RedCherry Kernel - Xiaomi miatoll / curtana
+          ## RedCherry Kernel for Xiaomi curtana / miatoll
 
           properties() { '
           kernel.string=RedCherry Kernel by Riaz
@@ -83,25 +84,32 @@ jobs:
           do.cleanup=1
           do.cleanuponabort=0
           device.name1=curtana
+          device.name2=miatoll
           supported.versions=
           supported.patchlevels=
           supported.vendorpatchlevels=
-          '; }
+          '; } # end properties
 
-          BLOCK=boot;
-          IS_SLOT_DEVICE=0;
-          RAMDISK_COMPRESSION=auto;
-          PATCH_VBMETA_FLAG=auto;
+          block=/dev/block/bootdevice/by-name/boot;
+          is_slot_device=0;
+          ramdisk_compression=auto;
+          patch_vbmeta_flag=auto;
 
           . tools/ak3-core.sh;
 
+          ## AnyKernel install
           split_boot;
 
           flash_boot;
+          ## end install
           EOF
 
-          echo "=== FINAL ANYKERNEL CONTENT ==="
+          echo "=== FINAL ANYKERNEL FILES ==="
           find . -type f | sort
+
+          echo ""
+          echo "=== ANYKERNEL CONFIG ==="
+          cat anykernel.sh
 
       - name: Create Flashable RedCherry ZIP
         run: |
@@ -109,12 +117,11 @@ jobs:
 
           cd AnyKernel3
 
+          rm -rf .git .github
+
           zip -r9 \
             ../RedCherry-miatoll-Flashable.zip \
-            . \
-            -x ".git/*" \
-            ".github/*" \
-            "LICENSE"
+            .
 
           cd ..
 
